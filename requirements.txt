@@ -8,3 +8,4 @@ rapidfuzz>=3.9,<4.0
 pytest>=8.3,<9.0
 openai>=1.40,<2.0
 python-dotenv>=1.0,<2.0
+plotly>=5.20,<6.0

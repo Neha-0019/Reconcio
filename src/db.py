@@ -3,6 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 import json
+import time
 
 from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, create_engine, select
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship, sessionmaker
@@ -71,10 +72,15 @@ def get_session_factory(db_path: Path | str = DEFAULT_DB_PATH):
     return sessionmaker(engine, expire_on_commit=False)
 
 
-def persist_run(records_by_source: dict[str, list[SourceRecord]], matches: list[MatchResult], exceptions: list[ExceptionRecord], metrics: ReconciliationMetrics, db_path: Path | str = DEFAULT_DB_PATH) -> int:
+def persist_run(records_by_source: dict[str, list[SourceRecord]], matches: list[MatchResult], exceptions: list[ExceptionRecord], metrics: ReconciliationMetrics, started_at: float, db_path: Path | str = DEFAULT_DB_PATH) -> int:
+    """Persist a complete run and finalize its end-to-end timing before commit.
+
+    The duration starts before source loading and includes all reconciliation
+    work plus SQLite writes for source records, matches, and exceptions.
+    """
     Session = get_session_factory(db_path)
     with Session.begin() as session:
-        audit = AuditLog(batch_size=sum(len(rows) for rows in records_by_source.values()), match_rate=metrics.matched_pct, duration_seconds=metrics.processing_time_seconds)
+        audit = AuditLog(batch_size=sum(len(rows) for rows in records_by_source.values()), match_rate=metrics.matched_pct, duration_seconds=0)
         session.add(audit)
         session.flush()
         for records in records_by_source.values():
@@ -84,6 +90,13 @@ def persist_run(records_by_source: dict[str, list[SourceRecord]], matches: list[
             session.add(MatchResultRow(run_id=audit.id, transaction_ids_json=json.dumps(match.transaction_ids), amounts_json=json.dumps(match.amounts), tier=match.tier, rules_json=json.dumps(match.rules_fired), confidence=match.confidence, similarity_score=match.similarity_score))
         for item in exceptions:
             session.add(ExceptionRow(run_id=audit.id, transaction_id=item.transaction_id, sources_present_json=json.dumps(item.sources_present), amount=item.amount, reason_code=item.reason_code, rule_trace_json=json.dumps(item.rule_trace), confidence=item.confidence, ai_explanation_json=json.dumps(item.ai_explanation) if item.ai_explanation else None))
+        session.flush()
+        duration = time.perf_counter() - started_at
+        metrics.processing_time_seconds = round(duration, 6)
+        total_records = sum(len(rows) for rows in records_by_source.values())
+        metrics.records_per_second = round(total_records / metrics.processing_time_seconds, 2) if metrics.processing_time_seconds else 0
+        audit.duration_seconds = metrics.processing_time_seconds
+        session.flush()
         return audit.id
 
 

@@ -34,6 +34,9 @@ class ExceptionRecord(BaseModel):
     reason_code: str
     rule_trace: list[str] = []
     confidence: float = Field(default=0, ge=0, le=1)
+    amount_difference: float | None = None
+    matching_tolerance: float | None = None
+    duplicate_sources: list[SourceName] = []
     ai_explanation: dict | None = None
 
 
