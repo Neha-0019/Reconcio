@@ -13,7 +13,9 @@ _latest_report: dict | None = None
 @app.post("/reconcile")
 def reconcile_batch() -> dict:
     global _latest_report
-    _latest_report = run_reconciliation()
+    # Explanations are read-only annotations of exceptions that the
+    # deterministic matcher has already finalized.
+    _latest_report = run_reconciliation(enable_ai=True)
     return _latest_report
 
 
@@ -32,7 +34,7 @@ async def reconcile_upload(
             if not upload.filename or not upload.filename.lower().endswith(".csv"):
                 raise ReconciliationInputError(f"{source} upload must be a .csv file.")
             frames[source] = pd.read_csv(BytesIO(await upload.read()))
-        _latest_report = run_reconciliation_from_frames(frames)
+        _latest_report = run_reconciliation_from_frames(frames, enable_ai=True)
         return _latest_report
     except (ReconciliationInputError, UnicodeDecodeError, pd.errors.ParserError) as error:
         raise HTTPException(status_code=400, detail=str(error)) from error

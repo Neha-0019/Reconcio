@@ -159,6 +159,20 @@ The figures below are **real, non-cherry-picked, persisted runs**. End-to-end du
 
 The missing and unresolved records are intentional. Reconcio is designed to surface uncertainty instead of inflating its match rate with forced matches.
 
+### Cash-control signal
+
+The dashboard also shows **Unreconciled cash exposure**: the total value represented by exceptions awaiting review. It deliberately does **not** claim to be a cash-balance forecast; it is the amount whose reconciliation status needs finance-ops attention before downstream cash reporting can be trusted.
+
+## Failure recovery: the 2 AM metrics correction
+
+During testing, a fast standalone reconciliation measurement did not agree with the duration recorded in the SQLite audit trail. That was a measurement-boundary bug: the fast path timed only the matching work while the real dashboard workflow also loads files, creates explanation annotations, and persists evidence. The timing was corrected to cover the complete end-to-end pipeline, and the README now reports only throughput derived from persisted audit-log rows. This is intentional: Reconcio optimizes for defensible finance metrics, not flattering numbers.
+
+## Submission proof
+
+- **Repository:** this README, the architecture diagrams, source code, and test suite are the technical evidence.
+- **Five-minute video:** record one seeded dashboard run; show the tier filter, exception table, audit trail, and the 7,722-record stress-test evidence. A suggested narration is in [docs/submission-proof.md](docs/submission-proof.md).
+- **Failure recovery:** use the metrics-correction story above to demonstrate that auditability informed a real engineering decision.
+
 ## Run locally
 
 ### 1. Create the environment

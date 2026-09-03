@@ -51,12 +51,14 @@ report = st.session_state.get("report")
 if report:
     metrics = report["metrics"]
     has_tier_breakdown = "tier_1_exact_pct" in metrics and "tier_2_fuzzy_pct" in metrics
-    col1, col2, col3, col4, col5 = st.columns(5)
+    col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("Match rate", f"{metrics['matched_pct']}%")
     col2.metric("Tier 1 exact", f"{metrics['tier_1_exact_pct']}%" if has_tier_breakdown else "Run again")
     col3.metric("Tier 2 fuzzy", f"{metrics['tier_2_fuzzy_pct']}%" if has_tier_breakdown else "Run again")
     col4.metric("Value matched", f"₹{metrics['value_matched']:,.2f}")
-    col5.metric("Throughput", f"{metrics['records_per_second']:,.0f} records/sec")
+    col5.metric("Unreconciled cash exposure", f"₹{metrics['value_in_exceptions']:,.2f}")
+    col6.metric("Throughput", f"{metrics['records_per_second']:,.0f} records/sec")
+    st.caption("Unreconciled cash exposure is the value represented by unresolved exceptions. It is not a bank-balance forecast.")
     if not has_tier_breakdown:
         st.info("This is a legacy in-memory report. Click Run Reconciliation to calculate the tier breakdown.")
 
